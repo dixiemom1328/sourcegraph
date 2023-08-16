@@ -3,7 +3,7 @@ ADD COLUMN IF NOT EXISTS enqueuer_user_id integer NOT NULL DEFAULT 0;
 
 DROP VIEW IF EXISTS lsif_indexes_with_repository_name;
 
-CREATE VIEW lsif_indexes_with_repository_name AS
+CREATE OR REPLACE VIEW lsif_indexes_scheduling_order AS
     SELECT u.id,
         u.commit,
         u.queued_at,
