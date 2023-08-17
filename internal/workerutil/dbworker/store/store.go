@@ -1142,17 +1142,27 @@ func makeColumnPrefixes(name string) []string {
 	parts := strings.Split(name, " ")
 
 	switch len(parts) {
+	case 0:
+		return []string{""}
 	case 1:
 		// name = TableName
 		// prefixes = <empty> and `TableName.`
 		return []string{"", parts[0] + "."}
 	case 2:
-		// name = TableName alias
-		// prefixes = <empty>, `TableName.`, and `alias.`
-		return []string{"", parts[0] + ".", parts[1] + "."}
-
+		switch i := strings.IndexRune(parts[0], '('); i {
+		case -1:
+			// name = TableName alias
+			// prefixes = <empty>, `TableName.`, and `alias.`
+			return []string{"", parts[0] + ".", parts[1] + "."}
+		default:
+			// name = FuncCall(one_param) alias
+			// prefixes = <empty>, `FuncCall.`, and `alias.`
+			return []string{"", parts[0][:i] + ".", parts[len(parts)-1] + "."}
+		}
 	default:
-		return []string{""}
+		// name = FuncCall(one_param, two_param, ...) alias
+		// prefixes = <empty>, `FuncCall.`, and `alias.`
+		return []string{"", parts[0][:strings.IndexRune(parts[0], '(')] + ".", parts[len(parts)-1] + "."}
 	}
 }
 

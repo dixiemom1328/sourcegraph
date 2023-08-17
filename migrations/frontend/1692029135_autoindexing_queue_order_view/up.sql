@@ -39,7 +39,7 @@ AS $$
             (state = 'queued'
             OR state = 'errored')
             AND queued_at <= (SELECT newest FROM newest_queued)
-            AND queued_at > (SELECT newest - '5d'::interval FROM newest_queued)
+            AND queued_at > (SELECT newest - lookback_window FROM newest_queued)
         ORDER BY repository_id, queued_at DESC, id
     ),
     potentially_starving AS NOT MATERIALIZED (
