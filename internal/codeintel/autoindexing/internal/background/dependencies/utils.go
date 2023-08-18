@@ -27,7 +27,7 @@ const indexMaxNumResets = 3
 
 var (
 	indexLookbackWindow = env.Get("CODEINTEL_AUTOINDEXING_CANDIDATE_JOB_WINDOW", "1d", "The window from the latest enqueued job to consider when finding candidate jobs to run")
-	repoDequeueCooldown = env.Get("CODEINTEL_AUTOINDEXING_COOLDOWN_DEBUFF", "1d", "How soon a repository should be on cooldown after a successful index before it can be a candidate when the most recently queued job is outside the lookback window.")
+	repoDequeueCooldown = env.Get("CODEINTEL_AUTOINDEXING_COOLDOWN_DEBUFF", "6h", "How soon a repository should be on cooldown after a successful index before it can be a candidate when the most recently queued job is outside the lookback window.")
 )
 
 var IndexWorkerStoreOptions = dbworkerstore.Options[uploadsshared.Index]{

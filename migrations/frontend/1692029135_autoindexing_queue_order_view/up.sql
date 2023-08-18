@@ -28,7 +28,7 @@ AS $$
     WITH newest_queued AS MATERIALIZED ( -- used to calculate top of window
         SELECT MAX(queued_at) AS newest
         FROM lsif_indexes
-        WHERE state = 'queued' OR state = 'errored'
+        WHERE state IN ('queued', 'errored')
         LIMIT 1
     ),
     newest_in_window AS NOT MATERIALIZED (
@@ -36,22 +36,26 @@ AS $$
         -- SELECT DISTINCT ON (repository_id) id, queued_at, repository_id
         FROM lsif_indexes
         WHERE
-            (state = 'queued'
-            OR state = 'errored')
-            AND queued_at <= (SELECT newest FROM newest_queued)
-            AND queued_at > (SELECT newest - lookback_window FROM newest_queued)
+            state IN ('queued', 'errored')
+            AND queued_at BETWEEN
+                (SELECT newest - lookback_window FROM newest_queued) AND
+                (SELECT newest FROM newest_queued)
         ORDER BY repository_id, queued_at DESC, id
     ),
     potentially_starving AS NOT MATERIALIZED (
         SELECT DISTINCT ON (repository_id) *
-        FROM lsif_indexes
+        -- SELECT DISTINCT ON (repository_id) id, queued_at, repository_id
+        FROM lsif_indexes l1
         WHERE
-            (state = 'queued'
-            OR state = 'errored')
-            AND queued_at <= (SELECT newest - lookback_window FROM newest_queued)
-            AND repository_id NOT IN (
-                SELECT repository_id
-                FROM newest_in_window
+            state IN ('queued', 'errored')
+            AND queued_at < (SELECT newest - lookback_window FROM newest_queued)
+            AND NOT EXISTS (
+                SELECT 1
+                FROM lsif_indexes
+                WHERE
+                    l1.repository_id = repository_id
+                    AND state = 'completed'
+                    AND finished_at >= ((SELECT newest - lookback_window FROM newest_queued) - cooldown)
             )
     ),
     final_candidates AS NOT MATERIALIZED (

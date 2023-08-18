@@ -238,8 +238,8 @@ type Options[T workerutil.Record] struct {
 	// Setting this value to zero will disable retries entirely.
 	MaxNumRetries int
 
-	// clock is used to mock out the wall clock used for heartbeat updates.
-	clock glock.Clock
+	// Clock is used to mock out the wall Clock used for heartbeat updates.
+	Clock glock.Clock
 }
 
 // ResultsetScanFn is a function that scans row values from a resultset into
@@ -264,8 +264,8 @@ func newStore[T workerutil.Record](observationCtx *observation.Context, handle b
 		options.ViewName = options.TableName
 	}
 
-	if options.clock == nil {
-		options.clock = glock.NewRealClock()
+	if options.Clock == nil {
+		options.Clock = glock.NewRealClock()
 	}
 
 	alternateColumnNames := map[string]string{}
@@ -492,7 +492,7 @@ func (s *store[T]) Dequeue(ctx context.Context, workerHostname string, condition
 		s.columnReplacer.Replace("{worker_hostname}"):   workerHostnameExpr,
 	}
 
-	records, err := s.options.Scan(s.Query(ctx, s.formatQuery(
+	q := s.formatQuery(
 		dequeueQuery,
 		s.options.OrderByExpression,
 		quote(s.options.ViewName),
@@ -508,7 +508,9 @@ func (s *store[T]) Dequeue(ctx context.Context, workerHostname string, condition
 		sqlf.Join(s.makeDequeueUpdateStatements(updatedColumns), ", "),
 		sqlf.Join(s.makeDequeueSelectExpressions(updatedColumns), ", "),
 		quote(s.options.ViewName),
-	)))
+	)
+	// fmt.Println(q.Query(sqlf.PostgresBindVar), q.Args())
+	records, err := s.options.Scan(s.Query(ctx, q))
 	if err != nil {
 		return ret, false, err
 	}
@@ -1033,7 +1035,7 @@ func (s *store[T]) formatQuery(query string, args ...any) *sqlf.Query {
 }
 
 func (s *store[T]) now() time.Time {
-	return s.options.clock.Now().UTC()
+	return s.options.Clock.Now().UTC()
 }
 
 const fetchDebugInformationForJob = `
