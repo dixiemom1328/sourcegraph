@@ -2224,7 +2224,8 @@ func postRepoFetchActions(
 		return errors.Wrap(err, "setting git attributes")
 	}
 
-	if err := gitSetAutoGC(rcf, reposDir, dir); err != nil {
+	// TODO: No bueno.
+	if err := gitSetAutoGC(rcf, reposDir, dir, gitGCModeGitAutoGC); err != nil {
 		return errors.Wrap(err, "setting git gc mode")
 	}
 

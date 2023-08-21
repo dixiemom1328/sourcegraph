@@ -6,7 +6,6 @@ import (
 
 	blobstore_shared "github.com/sourcegraph/sourcegraph/cmd/blobstore/shared"
 	frontend_shared "github.com/sourcegraph/sourcegraph/cmd/frontend/shared"
-	githubproxy_shared "github.com/sourcegraph/sourcegraph/cmd/github-proxy/shared"
 	gitserver_shared "github.com/sourcegraph/sourcegraph/cmd/gitserver/shared"
 	repoupdater_shared "github.com/sourcegraph/sourcegraph/cmd/repo-updater/shared"
 	searcher_shared "github.com/sourcegraph/sourcegraph/cmd/searcher/shared"
@@ -27,7 +26,6 @@ var services = []service.Service{
 	blobstore_shared.Service,
 	symbols_shared.Service,
 	worker_shared.Service,
-	githubproxy_shared.Service,
 	servegit.Service,
 }
 

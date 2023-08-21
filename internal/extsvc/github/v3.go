@@ -10,7 +10,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/google/go-github/v41/github"
 
 	"github.com/sourcegraph/log"
@@ -19,6 +22,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/auth"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/ratelimit"
+	"github.com/sourcegraph/sourcegraph/internal/redispool"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
@@ -87,13 +91,52 @@ func NewV3SearchClient(logger log.Logger, urn string, apiURL *url.URL, a auth.Au
 	return newV3Client(logger, urn, apiURL, a, "search", cli)
 }
 
+var (
+	concGaugeMu sync.Mutex
+	concGauge   int
+)
+
+func incConc() {
+	concGaugeMu.Lock()
+	defer concGaugeMu.Unlock()
+	concGauge++
+	fmt.Printf("concurrency is now at %d\n", concGauge)
+}
+
+func decConc() {
+	concGaugeMu.Lock()
+	defer concGaugeMu.Unlock()
+	concGauge--
+	fmt.Printf("concurrency is now at %d\n", concGauge)
+}
+
 func newV3Client(logger log.Logger, urn string, apiURL *url.URL, a auth.Authenticator, resource string, cli httpcli.Doer) *V3Client {
-	apiURL = canonicalizedURL(apiURL)
 	if gitHubDisable {
 		cli = disabledClient{}
 	}
 	if cli == nil {
 		cli = httpcli.ExternalDoer
+	}
+
+	isGitHubDotCom := urlIsGitHubDotCom(apiURL)
+
+	if isGitHubDotCom {
+		outer := cli
+		p, ok := redispool.Store.Pool()
+		if !ok {
+			// TODO: Can't leave like that. Not sure what app should be doing here instead.
+			// Maybe use a custom in-memory lock?
+			panic("github client requires real redis")
+		}
+		mu := redsync.New(redigo.NewPool(p)).NewMutex(fmt.Sprintf("github-dotcom-proxy:%s", a.Hash()))
+		cli = httpcli.DoerFunc(func(r *http.Request) (*http.Response, error) {
+			mu.Lock()
+			incConc()
+			res, err := outer.Do(r)
+			mu.Unlock()
+			decConc()
+			return res, err
+		})
 	}
 
 	cli = requestCounter.Doer(cli, func(u *url.URL) string {
@@ -123,7 +166,7 @@ func newV3Client(logger log.Logger, urn string, apiURL *url.URL, a auth.Authenti
 			),
 		urn:                 urn,
 		apiURL:              apiURL,
-		githubDotCom:        urlIsGitHubDotCom(apiURL),
+		githubDotCom:        isGitHubDotCom,
 		auth:                a,
 		httpClient:          cli,
 		internalRateLimiter: rl,
