@@ -57,6 +57,7 @@ AS $$
                     AND state = 'completed'
                     AND finished_at >= ((SELECT newest - lookback_window FROM newest_queued) - cooldown)
             )
+        ORDER BY repository_id, queued_at DESC, id
     ),
     final_candidates AS NOT MATERIALIZED (
         SELECT *

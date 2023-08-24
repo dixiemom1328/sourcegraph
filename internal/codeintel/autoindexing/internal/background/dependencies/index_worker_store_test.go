@@ -15,6 +15,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/uploads/shared"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/database/dbtest"
+	"github.com/sourcegraph/sourcegraph/internal/database/dbutil"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil/dbworker/store"
 )
@@ -36,7 +37,7 @@ func Test_AutoIndexingDequeueOrder(t *testing.T) {
 	opts.Clock = clock
 	workerstore := store.New(&observation.TestContext, db.Handle(), opts)
 
-	for _, test := range []struct {
+	for i, test := range []struct {
 		indexes []shared.Index
 		nextID  int
 	}{
@@ -49,25 +50,35 @@ func Test_AutoIndexingDequeueOrder(t *testing.T) {
 		},
 		{
 			indexes: []shared.Index{
-				{ID: 1, RepositoryID: 1, QueuedAt: clock.Now().Add(-time.Hour * 4), State: "completed"},
+				{ID: 1, RepositoryID: 1, QueuedAt: clock.Now().Add(-time.Hour * 4), State: "completed", FinishedAt: dbutil.NullTimeColumn(clock.Now().Add(-time.Hour * 3))},
 				{ID: 2, RepositoryID: 1, QueuedAt: clock.Now().Add(-time.Hour * 25)},
 				{ID: 3, RepositoryID: 2, QueuedAt: clock.Now()},
 			},
 			nextID: 3,
 		},
+		{
+			indexes: []shared.Index{
+				{ID: 1, RepositoryID: 1, QueuedAt: clock.Now().Add(-time.Hour)},
+				{},
+				{},
+			},
+			nextID: 0,
+		},
 	} {
-		if _, err := db.ExecContext(context.Background(), "TRUNCATE lsif_indexes RESTART IDENTITY CASCADE"); err != nil {
-			t.Fatal(err)
-		}
-		insertIndexes(t, db, test.indexes...)
-		job, _, err := workerstore.Dequeue(context.Background(), "borgir", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			if _, err := db.ExecContext(context.Background(), "TRUNCATE lsif_indexes RESTART IDENTITY CASCADE"); err != nil {
+				t.Fatal(err)
+			}
+			insertIndexes(t, db, test.indexes...)
+			job, _, err := workerstore.Dequeue(context.Background(), "borgir", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		if job.ID != test.nextID {
-			t.Fatalf("unexpected next index job candidate (got=%d,want=%d)", job.ID, test.nextID)
-		}
+			if job.ID != test.nextID {
+				t.Fatalf("unexpected next index job candidate (got=%d,want=%d)", job.ID, test.nextID)
+			}
+		})
 	}
 }
 
