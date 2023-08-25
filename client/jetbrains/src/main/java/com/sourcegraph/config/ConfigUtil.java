@@ -26,6 +26,7 @@ public class ConfigUtil {
         .setServerEndpoint(getSourcegraphUrl(project))
         .setAccessToken(getProjectAccessToken(project))
         .setCustomHeaders(getCustomRequestHeadersAsMap(project))
+        .setCodebase(CodyProjectService.getInstance(project).codyCodebase)
         .setAutocompleteAdvancedProvider(
             UserLevelConfig.getAutocompleteProviderType().vscodeSettingString())
         .setAutocompleteAdvancedServerEndpoint(UserLevelConfig.getAutocompleteServerEndpoint())
