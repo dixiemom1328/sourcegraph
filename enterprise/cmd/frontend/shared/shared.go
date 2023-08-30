@@ -14,6 +14,7 @@ import (
 
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/internal/contentlibrary"
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/internal/search"
+	"github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/internal/telemetry"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/enterprise"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/shared"
@@ -75,6 +76,7 @@ var initFunctions = map[string]EnterpriseInitializer{
 	"searchcontexts": searchcontexts.Init,
 	"contentLibrary": contentlibrary.Init,
 	"search":         search.Init,
+	"telemetry":      telemetry.Init,
 }
 
 func EnterpriseSetupHook(db database.DB, conf conftypes.UnifiedWatchable) enterprise.Services {
