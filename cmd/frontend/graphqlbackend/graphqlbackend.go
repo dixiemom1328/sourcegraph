@@ -431,7 +431,6 @@ func NewSchema(
 	schemas := []string{
 		mainSchema,
 		outboundWebhooksSchema,
-		telemetrySchema, // must be registered in all environments
 	}
 
 	for _, optional := range optionals {
@@ -622,6 +621,7 @@ func NewSchema(
 		if telemetryResolver := optional.TelemetryRootResolver; telemetryResolver != nil {
 			EnterpriseResolvers.telemetryResolver = telemetryResolver
 			resolver.TelemetryRootResolver = telemetryResolver
+			schemas = append(schemas, telemetrySchema)
 		}
 	}
 
