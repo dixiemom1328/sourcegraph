@@ -28,6 +28,7 @@ import com.sourcegraph.common.EditorUtils;
 import com.sourcegraph.config.ConfigUtil;
 import com.sourcegraph.config.UserLevelConfig;
 import com.sourcegraph.telemetry.GraphQlLogger;
+import com.sourcegraph.utils.CodyLanguageUtil;
 import difflib.Delta;
 import difflib.DiffUtils;
 import difflib.Patch;
@@ -58,6 +59,12 @@ public class CodyAutocompleteManager {
     return ApplicationManager.getApplication().getService(CodyAutocompleteManager.class);
   }
 
+  /**
+   * Clears any already rendered autocomplete suggestions for the given editor and cancels any
+   * pending ones.
+   *
+   * @param editor the editor to clear autocomplete suggestions for
+   */
   @RequiresEdt
   public void clearAutocompleteSuggestions(@NotNull Editor editor) {
     // Log "suggested" event and clear current autocompletion
@@ -84,6 +91,26 @@ public class CodyAutocompleteManager {
     disposeInlays(editor);
   }
 
+  /**
+   * Clears any already rendered autocomplete suggestions for all open editors and cancels any
+   * pending ones.
+   */
+  @RequiresEdt
+  public void clearAutocompleteSuggestionsForAllProjects() {
+    EditorUtils.getAllOpenEditors().forEach(this::clearAutocompleteSuggestions);
+  }
+
+  @RequiresEdt
+  public void clearAutocompleteSuggestionsForLanguageIds(List<String> languageIds) {
+    EditorUtils.getAllOpenEditors().stream()
+        .filter(
+            e ->
+                Optional.ofNullable(CodyLanguageUtil.Companion.getLanguage(e))
+                    .map(l -> languageIds.contains(l.getID()))
+                    .orElse(false))
+        .forEach(this::clearAutocompleteSuggestions);
+  }
+
   @RequiresEdt
   public void disposeInlays(@NotNull Editor editor) {
     if (editor.isDisposed()) {
@@ -99,6 +126,7 @@ public class CodyAutocompleteManager {
     return ConfigUtil.isCodyEnabled()
         && ConfigUtil.isCodyAutocompleteEnabled()
         && editor != null
+        && !CodyLanguageUtil.Companion.isLanguageBlacklisted(editor)
         && editor.getDocument().isWritable()
         && isProjectAvailable(editor.getProject())
         && isEditorSupported(editor);
@@ -125,7 +153,6 @@ public class CodyAutocompleteManager {
       return;
     }
     currentAutocompleteTelemetry = AutocompleteTelemetry.createAndMarkTriggered();
-    GraphQlLogger.logCodyEvent(project, "completion", "started");
 
     TextDocument textDocument = new IntelliJTextDocument(editor, project);
     AutocompleteDocumentContext autoCompleteDocumentContext =
@@ -319,7 +346,8 @@ public class CodyAutocompleteManager {
     VirtualFile virtualFile = FileDocumentManager.getInstance().getFile(editor.getDocument());
 
     if (virtualFile != null) {
-      return virtualFile.getDetectedLineSeparator();
+      return Optional.ofNullable(virtualFile.getDetectedLineSeparator())
+          .orElse(System.lineSeparator());
     } else {
       return System.lineSeparator();
     }

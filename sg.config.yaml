@@ -97,6 +97,9 @@ env:
   # Required for embeddings job upload
   EMBEDDINGS_UPLOAD_AWS_ENDPOINT: http://localhost:9000
 
+  # Required for upload of search job results
+  SEARCH_JOBS_UPLOAD_AWS_ENDPOINT: http://localhost:9000
+
   # Disable auto-indexing the CNCF repo group (this only works in Cloud)
   # This setting will be going away soon
   DISABLE_CNCF: notonmybox
@@ -118,6 +121,9 @@ env:
   # # OpenTelemetry in dev - use single http/json endpoint
   # OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4318
   # OTEL_EXPORTER_OTLP_PROTOCOL: http/json
+
+  # Enable gRPC Web UI for debugging
+  GRPC_WEB_UI_ENABLED: "true"
 
   # Enable full protobuf message logging when an internal error occurred
   SRC_GRPC_INTERNAL_ERROR_LOGGING_LOG_PROTOBUF_MESSAGES_ENABLED: "true"
@@ -535,11 +541,11 @@ commands:
       done
     install: |
       if [[ $(uname) == "Linux" ]]; then
-        bazel build //enterprise/cmd/executor-kubernetes:image_tarball
-        docker load --input $(bazel cquery //enterprise/cmd/executor-kubernetes:image_tarball --output=files)
+        bazel build //cmd/executor-kubernetes:image_tarball
+        docker load --input $(bazel cquery //cmd/executor-kubernetes:image_tarball --output=files)
       else
-        bazel build //enterprise/cmd/executor-kubernetes:image_tarball --config darwin-docker
-        docker load --input $(bazel cquery //enterprise/cmd/executor-kubernetes:image_tarball --config darwin-docker --output=files)
+        bazel build //cmd/executor-kubernetes:image_tarball --config darwin-docker
+        docker load --input $(bazel cquery //cmd/executor-kubernetes:image_tarball --config darwin-docker --output=files)
       fi
 
     env:
@@ -872,7 +878,7 @@ commands:
       if [ -n "$DELVE" ]; then
         export GCFLAGS='-N -l'
       fi
-      go build -gcflags="$GCFLAGS" -ldflags="-X github.com/sourcegraph/sourcegraph/internal/conf/deploy.forceType=app" -o .bin/sourcegraph github.com/sourcegraph/sourcegraph/enterprise/cmd/sourcegraph
+      go build -gcflags="$GCFLAGS" -ldflags="-X github.com/sourcegraph/sourcegraph/internal/conf/deploy.forceType=app" -o .bin/sourcegraph github.com/sourcegraph/sourcegraph/cmd/sourcegraph
     checkBinary: .bin/sourcegraph
     env:
       ENTERPRISE: 1
