@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/sourcegraph/log/logtest"
@@ -11,19 +10,14 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/search/exhaustive/service"
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/zoekt"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFromSearchClient(t *testing.T) {
-	assert := require.New(t)
-
 	mock := mockSearchClient(t, []string{"1", "2"})
 
-	ctx := context.Background()
-	_, err := service.FromSearchClient(mock).NewSearch(ctx, "1@rev1 1@rev2 2@rev3")
-	assert.NoError(err)
-
-	//searcher.RepositoryRevSpecs()
+	testNewSearcher(t, service.FromSearchClient(mock), newSearcherTestCase{
+		Query: "1@rev1 1@rev2 2@rev3",
+	})
 }
 
 // mockSearchClient returns a client which will return matches. This exercises

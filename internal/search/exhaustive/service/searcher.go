@@ -2,10 +2,14 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	"github.com/sourcegraph/sourcegraph/internal/search/client"
 	"github.com/sourcegraph/sourcegraph/internal/search/exhaustive/types"
+	"github.com/sourcegraph/sourcegraph/internal/search/job"
+	"github.com/sourcegraph/sourcegraph/internal/search/job/jobutil"
+	"github.com/sourcegraph/sourcegraph/internal/search/job/printer"
 )
 
 func FromSearchClient(client client.SearchClient) NewSearcher {
@@ -24,11 +28,16 @@ func FromSearchClient(client client.SearchClient) NewSearcher {
 			return nil, err
 		}
 
-		// TODO ensure plan is runnable by exhaustive
+		planJob, err := jobutil.NewPlanJob(inputs, inputs.Plan)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println(printer.SexpVerbose(planJob, job.VerbosityMax, true))
 
 		return searchQuery{
-			client: client,
-			inputs: inputs,
+			client:  client,
+			planJob: planJob,
 		}, nil
 	})
 }
@@ -41,8 +50,8 @@ func (f newSearcherFunc) NewSearch(ctx context.Context, q string) (SearchQuery, 
 }
 
 type searchQuery struct {
-	client client.SearchClient
-	inputs *search.Inputs
+	client  client.SearchClient
+	planJob job.Job
 }
 
 func (s searchQuery) RepositoryRevSpecs(context.Context) ([]types.RepositoryRevSpec, error) {
@@ -53,6 +62,7 @@ func (s searchQuery) ResolveRepositoryRevSpec(context.Context, types.RepositoryR
 	return nil, nil
 }
 
-func (s searchQuery) Search(context.Context, types.RepositoryRevision, CSVWriter) error {
+func (s searchQuery) Search(ctx context.Context, reporev types.RepositoryRevision, w CSVWriter) error {
+	//planJob.Run(ctx, s.JobClients(), stream)
 	return nil
 }
