@@ -19,6 +19,8 @@ All notable changes to Sourcegraph are documented in this file.
 
 ### Changed
 
+- The GitHub proxy service has been removed and is no longer required. You can safely remove it from your deployment. [#55290](https://github.com/sourcegraph/sourcegraph/issues/55290)
+
 ### Fixed
 
 ### Removed
